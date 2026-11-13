@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  },
+
+  "scripts": {
+    "dev:api": "npm --prefix backend run dev",
+    "dev:front": "npm --prefix frontend run dev",
+    "dev": "concurrently -n api,web -c green,magenta \"npm:dev:api\" \"npm:dev:front\""
+  }
+}
