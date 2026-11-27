@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL; // ex. http://localhost:3000/api/v1
+const API_URL = import.meta.env.VITE_API_URL; // ex. https://gsb-applifrais-backend.vercel.app/api/v1
 // --- session : jeton + profil, rangés dans le navigateur ---
 export function getToken() { return localStorage.getItem("token"); }
 export function getVisiteur() { try { return JSON.parse(localStorage.getItem("visiteur")); } catch { return null; } }
