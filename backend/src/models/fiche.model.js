@@ -38,3 +38,5 @@ ficheSchema.virtual("total").get(function () {
     const hors = (this.lignesHorsForfait || []).reduce((s, l) => s + l.montant, 0);
     return Math.round((forfait + hors) * 100) / 100;
 });
+
+module.exports = mongoose.model("Fiche", ficheSchema);

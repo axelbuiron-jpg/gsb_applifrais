@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthAPI, setSession } from "../services/api";
 
 export default function Login() {
@@ -25,7 +25,7 @@ export default function Login() {
     }
 
     return (
-        <main>
+        <main className="page-connexion">
             <form className="login" onSubmit={soumettre}>
                 <h1>GSB AppliFrais</h1>
                 <label>
@@ -52,6 +52,9 @@ export default function Login() {
                 <button type="submit" disabled={chargement}>
                     {chargement ? "Connexion…" : "Se connecter"}
                 </button>
+                <p className="auth-link">
+                    Pas encore de compte ? <Link to="/inscription">Créer un compte</Link>
+                </p>
             </form>
         </main>
     );

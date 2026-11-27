@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FichesAPI, getVisiteur } from "../services/api";
+import ScanRecu from "./ScanRecu";
 
-const ligneInitiale = { date: "", libelle: "", montant: "" };
+const ligneInitiale = { date: "", libelle: "", montant: "", justificatif: undefined };
+const ETATS = {
+    CR: "Créée",
+    CL: "Clôturée",
+    VA: "Validée",
+    MP: "Mise en paiement",
+    RB: "Remboursée",
+};
 
 export default function Detail() {
     const { id } = useParams();
     const [fiche, setFiche] = useState(null);
     const [ligne, setLigne] = useState(ligneInitiale);
+    const [nouvelEtat, setNouvelEtat] = useState("");
     const [info, setInfo] = useState("");
     const [idCharge, setIdCharge] = useState(null);
     const role = getVisiteur()?.role;
@@ -19,6 +28,7 @@ export default function Detail() {
             .then((resultat) => {
                 if (actif) {
                     setFiche(resultat);
+                    setNouvelEtat(resultat.etat);
                     setInfo("");
                     setIdCharge(id);
                 }
@@ -39,7 +49,9 @@ export default function Detail() {
     async function action(promesse) {
         setInfo("");
         try {
-            setFiche(await promesse());
+            const maj = await promesse();
+            setFiche(maj);
+            setNouvelEtat(maj.etat);
         } catch (err) {
             setInfo(err.message);
         }
@@ -61,7 +73,7 @@ export default function Detail() {
     if (!fiche) return <p role="alert">{info || "Fiche introuvable."}</p>;
 
     return (
-        <main>
+        <section className="detail" translate="no">
             <h1>Fiche {fiche.mois} — {fiche.visiteur?.prenom} {fiche.visiteur?.nom}</h1>
             <p>État : <b>{fiche.etat}</b> · Total : <b>{fiche.total?.toFixed(2)} €</b></p>
 
@@ -87,12 +99,20 @@ export default function Detail() {
                 <>
                     <form onSubmit={ajouter}>
                         <h2>Ajouter un frais hors forfait</h2>
+                        <ScanRecu onResult={(proposition) => setLigne((courante) => ({
+                            ...courante,
+                            date: proposition.date || courante.date,
+                            libelle: proposition.libelle || courante.libelle,
+                            montant: proposition.montant ?? courante.montant,
+                            justificatif: undefined,
+                        }))} />
                         <label>
                             Date
                             <input
                                 type="date"
                                 value={ligne.date}
                                 onChange={(e) => setLigne({ ...ligne, date: e.target.value })}
+                                onClick={(e) => e.currentTarget.showPicker?.()}
                                 required
                             />
                         </label>
@@ -125,11 +145,29 @@ export default function Detail() {
                 </>
             )}
 
-            {fiche.etat === "CL" && role === "comptable" && (
-                <button onClick={() => action(() => FichesAPI.valider(fiche._id))}>
-                    Valider
-                </button>
+            {role === "comptable" && (
+                <form onSubmit={(e) => {
+                    e.preventDefault();
+                    action(() => FichesAPI.changerEtat(fiche._id, nouvelEtat));
+                }}>
+                    <label>
+                        Modifier le statut
+                        <select
+                            value={nouvelEtat}
+                            onChange={(e) => setNouvelEtat(e.target.value)}
+                        >
+                            {Object.entries(ETATS)
+                                .filter(([etat]) => fiche.etat === "CR" || etat !== "CR")
+                                .map(([etat, libelle]) => (
+                                    <option key={etat} value={etat}>{libelle}</option>
+                                ))}
+                        </select>
+                    </label>
+                    <button type="submit" disabled={nouvelEtat === fiche.etat}>
+                        Enregistrer le statut
+                    </button>
+                </form>
             )}
-        </main>
+        </section>
     );
 }

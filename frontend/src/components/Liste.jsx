@@ -13,19 +13,9 @@ const ETAT = {
 export default function Liste() {
     const [fiches, setFiches] = useState([]);
     const [erreur, setErreur] = useState("");
-    const [mois, setMois] = useState("");
+    const [suppression, setSuppression] = useState("");
     const [chargement, setChargement] = useState(true);
     const role = getVisiteur()?.role;
-
-    async function charger() {
-        try {
-            setFiches(await FichesAPI.lister());
-        } catch (err) {
-            setErreur(err.message);
-        } finally {
-            setChargement(false);
-        }
-    }
 
     useEffect(() => {
         let actif = true;
@@ -45,15 +35,17 @@ export default function Liste() {
         };
     }, []);
 
-    async function creer(e) {
-        e.preventDefault();
+    async function supprimer(fiche) {
+        if (!window.confirm(`Supprimer la fiche de ${fiche.mois} ?`)) return;
         setErreur("");
+        setSuppression(fiche._id);
         try {
-            await FichesAPI.creer(mois);
-            setMois("");
-            await charger();
+            await FichesAPI.supprimer(fiche._id);
+            setFiches((courantes) => courantes.filter((courante) => courante._id !== fiche._id));
         } catch (err) {
             setErreur(err.message);
+        } finally {
+            setSuppression("");
         }
     }
 
@@ -62,18 +54,7 @@ export default function Liste() {
             <h1>{role === "comptable" ? "Toutes les fiches" : "Mes fiches"}</h1>
             {erreur && <p className="banniere-erreur" role="alert">{erreur}</p>}
             {role === "visiteur" && (
-                <form onSubmit={creer}>
-                    <label>
-                        Mois
-                        <input
-                            type="month"
-                            value={mois}
-                            onChange={(e) => setMois(e.target.value)}
-                            required
-                        />
-                    </label>
-                    <button type="submit">Nouvelle fiche</button>
-                </form>
+                <Link className="bouton" to="/fiches/nouvelle">Créer une note de frais</Link>
             )}
             {chargement ? <p>Chargement des fiches…</p> : (
                 <table>
@@ -95,7 +76,19 @@ export default function Liste() {
                                 )}
                                 <td>{ETAT[f.etat] || f.etat}</td>
                                 <td>{f.total?.toFixed(2)} €</td>
-                                <td><Link to={`/fiches/${f._id}`}>Ouvrir</Link></td>
+                                <td className="actions-fiche">
+                                    <Link to={`/fiches/${f._id}`}>Ouvrir</Link>
+                                    {role === "visiteur" && f.etat === "CR" && (
+                                        <button
+                                            type="button"
+                                            className="bouton-suppression"
+                                            onClick={() => supprimer(f)}
+                                            disabled={suppression === f._id}
+                                        >
+                                            {suppression === f._id ? "Suppression…" : "Supprimer"}
+                                        </button>
+                                    )}
+                                </td>
                             </tr>
                         ))}
                     </tbody>

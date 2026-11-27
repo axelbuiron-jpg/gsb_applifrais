@@ -35,8 +35,22 @@ exports.lire = asyncHandler(async (req, res) => {
 
 // POST /fiches — le visiteur crée SA fiche du mois
 exports.creer = asyncHandler(async (req, res) => {
-    const { mois } = z.object({ mois: z.string().regex(/^\d{4}-\d{2}$/) }).parse(req.body);
-    const fiche = await Fiche.create({ visiteur: req.user.id, mois, etat: "CR",
+    const donnees = z.object({
+        mois: z.string().regex(/^\d{4}-\d{2}$/),
+        lignesForfait: z.array(z.object({
+            codeType: z.enum(["KM", "EF", "NUI", "REP"]),
+            quantite: z.coerce.number().positive(),
+        })).default([]),
+        lignesHorsForfait: z.array(z.object({
+            date: z.coerce.date(),
+            libelle: z.string().trim().min(1).max(100),
+            montant: z.coerce.number().positive(),
+            justificatif: z.string().optional(),
+        })).default([]),
+    }).refine((fiche) => fiche.lignesForfait.length + fiche.lignesHorsForfait.length > 0, {
+        message: "La fiche doit contenir au moins une dépense",
+    }).parse(req.body);
+    const fiche = await Fiche.create({ visiteur: req.user.id, ...donnees, etat: "CR",
         historiqueEtats: [{ etat: "CR", par: req.user.id }] });
     res.status(201).json(fiche);
 });
@@ -79,4 +93,49 @@ exports.valider = asyncHandler(async (req, res) => {
     fiche.historiqueEtats.push({ etat: "VA", par: req.user.id });
     await fiche.save();
     res.json(fiche);
+});
+
+exports.changerEtat = asyncHandler(async (req, res) => {
+    assertId(req.params.id);
+    const { etat } = z.object({
+        etat: z.enum(["CR", "CL", "VA", "MP", "RB"]),
+    }).parse(req.body);
+    const fiche = await Fiche.findById(req.params.id);
+    if (!fiche) throw new AppError("Fiche introuvable", 404);
+    if (fiche.etat !== "CR" && etat === "CR") {
+        throw new AppError("Une note qui a quitté l’état créée ne peut pas être rouverte", 409);
+    }
+
+    if (fiche.etat !== etat) {
+        const maj = await Fiche.findOneAndUpdate(
+            { _id: fiche._id, etat: fiche.etat },
+            {
+                $set: { etat },
+                $push: { historiqueEtats: { etat, par: req.user.id } },
+            },
+            { new: true, runValidators: true },
+        );
+        if (!maj) throw new AppError("La fiche a été modifiée. Rechargez-la puis réessayez.", 409);
+        return res.json(maj);
+    }
+
+    res.json(fiche);
+});
+
+exports.supprimer = asyncHandler(async (req, res) => {
+    assertId(req.params.id);
+    const fiche = await Fiche.findById(req.params.id);
+    if (!fiche) throw new AppError("Fiche introuvable", 404);
+    if (String(fiche.visiteur) !== req.user.id) throw new AppError("Accès refusé", 403);
+    if (fiche.etat !== "CR") {
+        throw new AppError("Seule une fiche créée peut être supprimée", 409);
+    }
+
+    const supprimee = await Fiche.findOneAndDelete({
+        _id: fiche._id,
+        visiteur: req.user.id,
+        etat: "CR",
+    });
+    if (!supprimee) throw new AppError("La fiche ne peut plus être supprimée", 409);
+    res.status(204).end();
 });
