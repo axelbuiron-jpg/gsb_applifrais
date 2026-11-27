@@ -4,7 +4,11 @@ const helmet = require("helmet");
 const app = express();
 app.disable("x-powered-by");
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL }));
+const originsAutorisees = [
+    process.env.CLIENT_URL,
+    "https://gsb-applifrais.vercel.app",
+].filter(Boolean);
+app.use(cors({ origin: originsAutorisees }));
 app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/v1", require("./routes"));
