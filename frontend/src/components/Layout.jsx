@@ -5,7 +5,7 @@ export default function Layout() {
     const v = getVisiteur();
     return (
         <>
-            <header className="barre">
+            <header className={`barre${v?.role === "visiteur" ? " barre-visiteur" : ""}`}>
                 <Link to="/">GSB AppliFrais</Link>
                 {v?.role === "comptable" && (
                     <NavLink

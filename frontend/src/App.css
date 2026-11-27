@@ -30,6 +30,15 @@
   backdrop-filter: blur(18px);
 }
 
+.barre-visiteur {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.barre-visiteur button {
+  justify-self: end;
+  width: max-content;
+}
+
 .barre > a {
   display: inline-flex;
   align-items: center;
@@ -695,6 +704,10 @@ td a {
     gap: 10px 12px;
     min-height: 68px;
     padding: 10px 18px;
+  }
+
+  .barre-visiteur {
+    grid-template-columns: 1fr auto;
   }
 
   .barre > a {
